@@ -1,5 +1,3 @@
-
-
 #include <msp430.h>
 
 void initClock(void); 	//System clock setup
@@ -146,4 +144,3 @@ void RX(void) __interrupt [USCI_B0_VECTOR]
     tmp = UCB0RXBUF; //record recieved character
   }
 }
-
