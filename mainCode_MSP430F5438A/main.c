@@ -2,7 +2,7 @@
 #include <msp430.h>
 
 extern void initUART(void);
-extern void void uartSendString(const char *str);
+extern void uartSendString(const char *str);
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
@@ -31,7 +31,7 @@ int main(void)
  //   initSPI();		//Initialize SPI after clocks
  //   spiWrite(write, 0x00);
  //   spiRead(0x00);
-uartSendString("Hello world!");
+uartSendString("\xFF\xFF\xFF\xFFHello world!\xFF\xFF\xFF\xFF");
     _EINT(); 
     LPM0;
 }

@@ -9,14 +9,14 @@ void initUART(void)
     UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
     UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
     //Divider for Clock:
-    //Divider = Clk / baud rate = 8 MHz / 460.8 kHz = 17.36
-    UCA0BR0 = 17	;		//lower 8 bits
+    //Divider = Clk / baud rate = 8 MHz / 115200
+    UCA0BR0 = 69	;		//lower 8 bits
     UCA0BR1 = 0;			//upper 8 bits
-    UCA0MCTL = UCBRS_3;			//oversampling off, reccommended values from table 36-4
+    UCA0MCTL = UCBRS_4;			//oversampling off, reccommended values from table 36-4
 
     UCA0CTL1 &= ~UCSWRST; 		//Enable UART
 }
-*/
+
 
 
 //UART transmit functions
