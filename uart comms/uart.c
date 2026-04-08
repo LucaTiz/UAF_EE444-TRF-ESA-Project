@@ -4,10 +4,10 @@
 void initUART(void)
 {
     //Select UART pins (double check)
-    P3SEL |= BIT4 | BIT5;		// P3.4 = TX and P3.5 = RX
+    P5SEL |= BIT6 | BIT7;		// P5.6 = UCA1TXD and P5.7 = UCA1RXD
 
-    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
-    UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
+    UCA1CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
+    UCA1CTL1 |= UCSSEL_2;		//SMCLK as source
     //UCOS16 = 1; //Wrong implimentation, bit part of UCA0MCTL
     //table 
 
@@ -22,20 +22,18 @@ void initUART(void)
     // note: MSP430 can not store 833 in single register, max value per register is 255
     //Values are stored in two registers instead
 
-    UCA0BR0 = 4;		    //lower divider byte
-    UCA0BR1 = 0;		    //upper divider byte
-    UCA0MCTL = UCBRF_5 | UCBRS_0 | UCOS16;	// 1st stage modulation(fractional baud correction) + 2nd stage modulation + oversampling
+    UCA1BR0 = 52;		    //lower divider byte
+    UCA1BR1 = 0;		    //upper divider byte
+    UCA1MCTL = UCBRF_5 | UCBRS_0 | UCOS16;	// 1st stage modulation(fractional baud correction) + 2nd stage modulation + oversampling
 
-    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
+    UCA1CTL1 &= ~UCSWRST; 		//Enable UART
 }
-*/
-
 
 //UART transmit functions
 void uartSendChar(char c)
 {
-    while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = c;
+    while (!(UCA1IFG & UCTXIFG));
+    UCA1TXBUF = c;
 }
 void uartSendString(const char *str)
 {
@@ -43,5 +41,4 @@ void uartSendString(const char *str)
     {
          uartSendChar(*str++);
     }
-}    
-
+}
