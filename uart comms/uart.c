@@ -24,7 +24,7 @@ void initUART(void)
 
     UCA1BR0 = 52;		    //lower divider byte
     UCA1BR1 = 0;		    //upper divider byte
-    UCA1MCTL = UCBRF_5 | UCBRS_0 | UCOS16;	// 1st stage modulation(fractional baud correction) + 2nd stage modulation + oversampling
+    UCA1MCTL = UCBRF_1 | UCBRS_0 | UCOS16;	// 1st stage modulation(fractional baud correction) + 2nd stage modulation + oversampling
 
     UCA1CTL1 &= ~UCSWRST; 		//Enable UART
 }
