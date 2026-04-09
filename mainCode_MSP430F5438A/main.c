@@ -1,8 +1,6 @@
 #include <__cross_studio_io.h>
 #include <msp430.h>
-
-extern void initUART(void);
-extern void uartSendString(const char *str);
+#include "uart.h"
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
