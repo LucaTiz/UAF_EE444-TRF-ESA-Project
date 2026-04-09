@@ -1,4 +1,6 @@
+#include <__cross_studio_io.h>
 #include <msp430.h>
+#include "uart.h"
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
@@ -23,10 +25,11 @@ int main(void)
 
 
     initClock();	//Setup system timing; do first
- //   initUART();		//Initialize UART
-    initSPI();		//Initialize SPI after clocks
-    spiWrite(write, 0x00);
-    spiRead(0x00);
+    initUART();		//Initialize UART
+ //   initSPI();		//Initialize SPI after clocks
+ //   spiWrite(write, 0x00);
+ //   spiRead(0x00);
+uartSendString("Hello world!");
     _EINT(); 
     LPM0;
 }
@@ -36,7 +39,7 @@ void initClock(void)
 {
     //REFO for reference, configuring DCO to 8MHz
     UCSCTL3 = SELREF__REFOCLK; 		//FLL reference = REFO
-    UCSCTL4 = SELA__REFOCLK + SELS_2;		//ACLK = REFO
+    UCSCTL4 = SELA__REFOCLK | SELS__DCOCLK | SELM__DCOCLK;		//ACLK = REFO, SMCLK = DCO
 
     __bis_SR_register(SCG0);		//Disable FLL
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
@@ -103,7 +106,6 @@ void spiRead(unsigned char address)
     P1OUT |= BIT3;              // CS High
 }
 
-
 void spiRead3(unsigned char address)
 {
     uint32_t result;
@@ -152,44 +154,4 @@ void RX(void) __interrupt [USCI_B0_VECTOR]
     tmp = UCB0RXBUF; //record recieved character
   }
 }
-*/
-
-/*
-//UART Setup//
-void initUART(void)
-{
-    //Select UART pins (double check)
-    P3SEL |= BIT4 | BIT5;		// P3.4 = TX and P3.5 = RX
-
-    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
-    UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
-
-    //Divider for Clock:
-    //Divider = Clk / baud rate = 8e6 / 9600 = 833.333
-    //BR0/BR1 = 833 
-    //note: MSP430 can not store 833 in single register, max value per register is 255
-    //Values are stored in two registers instead
-
-    UCA0BR0 = 833 & 0xFF;		//lower 8 bits (65)
-    UCA0BR1 = (833 >> 8);		//upper 8 bits (3 * 2^8)
-    UCA0MCTL = UCBRS_6;			//Approx modulation
-
-    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
-}
-*/
-
-/*
-//UART transmit functions
-void uartSendChar(char c)
-{
-    while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = c;
-}
-void uartSendString(const char *str)
-{
-    while(*str)
-    {
-         uartSendChar(*str++);
-    }
-}    
 */
