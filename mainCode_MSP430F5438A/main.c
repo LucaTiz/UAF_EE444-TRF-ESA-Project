@@ -41,7 +41,7 @@ void initClock(void)
 {
     //REFO for reference, configuring DCO to 8MHz
     UCSCTL3 = SELREF__REFOCLK; 		//FLL reference = REFO
-    UCSCTL4 = SELA__REFOCLK + SELS_2;		//ACLK = REFO
+    UCSCTL4 = SELA__REFOCLK | SELS_DCOCLK | SELM_DCOCLK;		//ACLK = REFO, SMCLK = DCO
 
     __bis_SR_register(SCG0);		//Disable FLL
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
