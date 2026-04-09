@@ -31,7 +31,7 @@ int main(void)
  //   initSPI();		//Initialize SPI after clocks
  //   spiWrite(write, 0x00);
  //   spiRead(0x00);
-uartSendString("\xFF\xFF\xFF\xFFHello world!\xFF\xFF\xFF\xFF");
+uartSendString("Hello world!");
     _EINT(); 
     LPM0;
 }
