@@ -88,7 +88,7 @@ void spiWrite(unsigned char data, unsigned char address)
   //  P1OUT = 1;
 }
 
-//read data from a 6-bit address
+//read data from a 8-bit address (contrl registers)
 void spiRead(unsigned char address)
 {
     unsigned char dummy;
@@ -106,3 +106,52 @@ void spiRead(unsigned char address)
     P1OUT |= BIT3;              // CS High
 }
 
+void spiRead3(unsigned char address)
+{
+    uint32_t result;
+
+    unint8_t byte1;
+    unint8_t byte2;
+    unint8_t byte3;
+
+    result = (byte1 << 16) + (byte2 << 8) + byte3;
+
+    unsigned char dummy;
+    while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
+    P1OUT &= ~BIT3;
+    UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
+   
+    while (UCB0STAT & UCBUSY);
+    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    UCB0TXBUF = 0x00;             // Send dummy to clock in data
+    while (!(UCB0IFG & UCRXIFG));
+    while (UCB0STAT & UCBUSY);
+    byte1 = UCB0RXBUF;          // Capture actual data
+    
+    while (UCB0STAT & UCBUSY);
+    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    UCB0TXBUF = 0x00;             // Send dummy to clock in data
+    while (!(UCB0IFG & UCRXIFG));
+    while (UCB0STAT & UCBUSY);
+    byte2 = UCB0RXBUF;          // Capture actual data
+
+    while (UCB0STAT & UCBUSY);
+    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    UCB0TXBUF = 0x00;             // Send dummy to clock in data
+    while (!(UCB0IFG & UCRXIFG));
+    while (UCB0STAT & UCBUSY);
+    byte3 = UCB0RXBUF;          // Capture actual data
+ 
+    P1OUT |= BIT3;              // CS High
+}
+
+/*
+// UCA ISR
+void RX(void) __interrupt [USCI_B0_VECTOR]
+{
+  if(UCB0IFG & UCRXIFG) //Check RX bit of interrupt flag register
+  {
+    tmp = UCB0RXBUF; //record recieved character
+  }
+}
+*/
