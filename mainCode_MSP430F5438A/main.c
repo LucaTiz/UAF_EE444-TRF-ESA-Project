@@ -1,6 +1,5 @@
-#include <__cross_studio_io.h>
 #include <msp430.h>
-#include "uart.h"
+#include <stdint.h>
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
@@ -17,7 +16,7 @@ void spiRead(unsigned char address);
 volatile int tmp = 0;
 volatile int write = 0x05;
 volatile int read;
-
+uint32_t result;
 
 int main(void)
 {
@@ -25,21 +24,24 @@ int main(void)
 
 
     initClock();	//Setup system timing; do first
-    initUART();		//Initialize UART
- //   initSPI();		//Initialize SPI after clocks
- //   spiWrite(write, 0x00);
- //   spiRead(0x00);
-uartSendString("Hello world!");
+ //   initUART();		//Initialize UART
+    initSPI();		//Initialize SPI after clocks
+    spiWrite(write, 0x00);
+//    spiConfig();
+    spiRead(0x00);
+    spiRead3(0x10);
     _EINT(); 
     LPM0;
 }
+
+
 
 //Clock Setup//
 void initClock(void)
 {
     //REFO for reference, configuring DCO to 8MHz
     UCSCTL3 = SELREF__REFOCLK; 		//FLL reference = REFO
-    UCSCTL4 = SELA__REFOCLK | SELS__DCOCLK | SELM__DCOCLK;		//ACLK = REFO, SMCLK = DCO
+    UCSCTL4 = SELA__REFOCLK + SELS_2;		//ACLK = REFO
 
     __bis_SR_register(SCG0);		//Disable FLL
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
@@ -88,6 +90,9 @@ void spiWrite(unsigned char data, unsigned char address)
   //  P1OUT = 1;
 }
 
+
+
+
 //read data from a 8-bit address (contrl registers)
 void spiRead(unsigned char address)
 {
@@ -106,43 +111,44 @@ void spiRead(unsigned char address)
     P1OUT |= BIT3;              // CS High
 }
 
+
 void spiRead3(unsigned char address)
 {
-    uint32_t result;
+    uint8_t byte1;
+    uint8_t byte2;
+    uint8_t byte3;
 
-    unint8_t byte1;
-    unint8_t byte2;
-    unint8_t byte3;
-
-    result = (byte1 << 16) + (byte2 << 8) + byte3;
-
-    unsigned char dummy;
+    char dummy1;
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
     P1OUT &= ~BIT3;
     UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
    
     while (UCB0STAT & UCBUSY);
-    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
     byte1 = UCB0RXBUF;          // Capture actual data
     
     while (UCB0STAT & UCBUSY);
-    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
     byte2 = UCB0RXBUF;          // Capture actual data
 
     while (UCB0STAT & UCBUSY);
-    dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
+    dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
     byte3 = UCB0RXBUF;          // Capture actual data
- 
+
     P1OUT |= BIT3;              // CS High
+
+    result = (byte1 << 16) + (byte2 << 8) + byte3;
+
+
 }
 
 /*
@@ -154,4 +160,44 @@ void RX(void) __interrupt [USCI_B0_VECTOR]
     tmp = UCB0RXBUF; //record recieved character
   }
 }
+*/
+
+/*
+//UART Setup//
+void initUART(void)
+{
+    //Select UART pins (double check)
+    P3SEL |= BIT4 | BIT5;		// P3.4 = TX and P3.5 = RX
+
+    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
+    UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
+
+    //Divider for Clock:
+    //Divider = Clk / baud rate = 8e6 / 9600 = 833.333
+    //BR0/BR1 = 833 
+    //note: MSP430 can not store 833 in single register, max value per register is 255
+    //Values are stored in two registers instead
+
+    UCA0BR0 = 833 & 0xFF;		//lower 8 bits (65)
+    UCA0BR1 = (833 >> 8);		//upper 8 bits (3 * 2^8)
+    UCA0MCTL = UCBRS_6;			//Approx modulation
+
+    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
+}
+*/
+
+/*
+//UART transmit functions
+void uartSendChar(char c)
+{
+    while (!(UCA0IFG & UCTXIFG));
+    UCA0TXBUF = c;
+}
+void uartSendString(const char *str)
+{
+    while(*str)
+    {
+         uartSendChar(*str++);
+    }
+}    
 */
