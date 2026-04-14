@@ -43,8 +43,8 @@ The following is a list of tasks for the project, broken down by functionality.
 ### TDC code
  - [ ] Impliment constant 8MHz clock for TDC operation.
  - [ ] Clean up file structure - Put SPI Read/Write functions in separate file.
- - [ ] Write main measurement loop commands 
-        - [ ] use TDC external interrupt to trigger read3 commands.
+ - [ ] Write main measurement loop commands  
+    - [ ] use TDC external interrupt to trigger read3 commands.
  - [ ] Use TDC datasheet to impliment calculation of TOFs (TDC combined mode).
  - [ ] Compare time of flights to determine position (degrees).
 
