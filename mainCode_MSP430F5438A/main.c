@@ -26,8 +26,19 @@ volatile uint32_t read3;
 int main(void)
 {
     WDTCTL = WDTPW | WDTHOLD;	//Disable watchdog
+   
+////////////// pin configuration ///////////////////
+    P3SEL |= BIT1 | BIT2 | BIT3;	// P3.1 - UCB0SIMO, P3.2 - UCB0SOMI, P3.3 - UCB0CLK, UCB0STE
+    P3DIR |= BIT1 | BIT3;	//STE, MOSI, and CLK pins as output
+    P3DIR &= ~BIT2;			//SOMI as input
+    P1DIR |= BIT3; // CSB1 control 
+    P1DIR |= BIT5; // CSB2 control 
+    P1OUT |= BIT3; // set CSB high - not currently in a transaction 
+    P1DIR |= BIT6; // enable pin
+    P1OUT |= BIT6; // set ENABLE high 
+       
 
-
+   
     initClock();	//Setup system timing; do first
  //   initUART();		//Initialize UART
     initSPI();		//Initialize SPI after clocks
@@ -62,15 +73,7 @@ void initClock(void)
 // SPI Setup //
 void initSPI(void)
 {
-    P3SEL |= BIT1 | BIT2 | BIT3;	// P3.1 - UCB0SIMO, P3.2 - UCB0SOMI, P3.3 - UCB0CLK, UCB0STE
-    P3DIR |= BIT1 | BIT3;	//STE, MOSI, and CLK pins as output
-    P3DIR &= ~BIT2;			//SOMI as input
-    P1DIR |= BIT3; // CSB1 control 
-    P1DIR |= BIT5; // CSB2 control 
-    P1OUT |= BIT3; // set CSB high - not currently in a transaction 
-    P1DIR |= BIT6; // enable pin
-    P1OUT |= BIT6; // set ENABLE high 
-       
+
     UCB0CTL1 |= UCSWRST; 		//Hold in reset
     UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCSYNC | UCMODE_0; //SPI master, MSB first, 3 wire config 
     UCB0CTL1 = UCSSEL_2;      //SMCLK
