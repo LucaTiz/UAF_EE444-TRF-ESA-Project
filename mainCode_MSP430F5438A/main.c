@@ -4,19 +4,24 @@
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
-
 //UART output
 void uartSendChar(char c);
 void uartSendString(const char *str);
 
-void spiWrite(unsigned char data, unsigned char address); 
-void spiRead(unsigned char address);
+void spiWrite(unsigned char data, unsigned char address, unsigned int CS); 
+uint8_t spiRead(unsigned char address, unsigned int CS);
+
+uint32_t spiRead3(unsigned char address, unsigned int CS);
+
+int calculateTime (void);
+
 //note: SPI sends and receives simultaneously
 
 volatile int tmp = 0;
-volatile int write = 0x05;
-volatile int read;
-uint32_t result;
+volatile int TDC1 = BIT3;
+volatile int TDC2 = BIT5;
+volatile uint8_t  read;
+volatile uint32_t read3;
 
 int main(void)
 {
@@ -26,10 +31,10 @@ int main(void)
     initClock();	//Setup system timing; do first
  //   initUART();		//Initialize UART
     initSPI();		//Initialize SPI after clocks
-    spiWrite(write, 0x00);
+    spiWrite(0x05, 0x00, TDC1);
 //    spiConfig();
-    spiRead(0x00);
-    spiRead3(0x10);
+    read = spiRead(0x00, TDC1);
+    read3 = spiRead3(0x10, TDC1);
     _EINT(); 
     LPM0;
 }
@@ -40,8 +45,7 @@ int main(void)
 void initClock(void)
 {
     //REFO for reference, configuring DCO to 8MHz
-    UCSCTL3 = SELREF__REFOCLK; 		//FLL reference = REFO
-    UCSCTL4 = SELA__REFOCLK + SELS_2;		//ACLK = REFO
+    UCSCTL3 = SELREF__XT1CLK; 		//FLL reference = XT1
 
     __bis_SR_register(SCG0);		//Disable FLL
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
@@ -52,6 +56,7 @@ void initClock(void)
 
     __bic_SR_register(SCG0);		//Re-enable FLL
     __delay_cycles(25000);		//Time to allow clock stabilization
+    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK = XT1 SMCLK = 
 }
 
 // SPI Setup //
@@ -60,7 +65,8 @@ void initSPI(void)
     P3SEL |= BIT1 | BIT2 | BIT3;	// P3.1 - UCB0SIMO, P3.2 - UCB0SOMI, P3.3 - UCB0CLK, UCB0STE
     P3DIR |= BIT1 | BIT3;	//STE, MOSI, and CLK pins as output
     P3DIR &= ~BIT2;			//SOMI as input
-    P1DIR |= BIT3; // CSB control 
+    P1DIR |= BIT3; // CSB1 control 
+    P1DIR |= BIT5; // CSB2 control 
     P1OUT |= BIT3; // set CSB high - not currently in a transaction 
     P1DIR |= BIT6; // enable pin
     P1OUT |= BIT6; // set ENABLE high 
@@ -75,16 +81,16 @@ void initSPI(void)
 }
 
 //write data to a 6-bit address, and recieve the data back as confirmation
-void spiWrite(unsigned char data, unsigned char address)
+void spiWrite(unsigned char data, unsigned char address, unsigned int CS)
 {
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
-    P1OUT &= ~BIT3;
+    P1OUT &= ~CS; // either 5 or 3, fix later 
     UCB0TXBUF =  (0b01000000 | address);//write command from TDC datasheet - initiates write to address (TDCCONFIG1 at 0x00)
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = data; // writes data (5 to TDCCONFIG1)
     while (!(UCB0IFG & UCTXIFG));
     while (UCB0STAT & UCBUSY);
-    P1OUT |= BIT3;
+    P1OUT |= CS;
   //  UCB0TXBUF =  (0x00 | address);//read command to dout on next sclk
   //  while (!(UCB0IFG & UCTXIFG));
   //  P1OUT = 1;
@@ -94,33 +100,32 @@ void spiWrite(unsigned char data, unsigned char address)
 
 
 //read data from a 8-bit address (contrl registers)
-void spiRead(unsigned char address)
+uint8_t spiRead(unsigned char address, unsigned int CS)
 {
     unsigned char dummy;
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
-    P1OUT &= ~BIT3;
+    P1OUT &= ~CS;
     UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
     while (UCB0STAT & UCBUSY);
     dummy = UCB0RXBUF;            // Clear the RX buffer from the first shift
 
-    UCB0TXBUF = 0x00;             // Send dummy to clock in data
+    UCB0TXBUF = 0x00;             // Send dummy data to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
     read = UCB0RXBUF;          // Capture actual data
     
-    P1OUT |= BIT3;              // CS High
+    P1OUT |= CS;              // CS High
 }
 
 
-void spiRead3(unsigned char address)
+uint32_t spiRead3(unsigned char address, unsigned int CS)
 {
-    uint8_t byte1;
-    uint8_t byte2;
-    uint8_t byte3;
+    uint8_t data[3];
+    uint32_t result = 0;
 
     char dummy1;
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
-    P1OUT &= ~BIT3;
+    P1OUT &= ~CS;
     UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
    
     while (UCB0STAT & UCBUSY);
@@ -128,26 +133,27 @@ void spiRead3(unsigned char address)
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
-    byte1 = UCB0RXBUF;          // Capture actual data
+    data[0] = UCB0RXBUF;          // Capture actual data
     
     while (UCB0STAT & UCBUSY);
     dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
-    byte2 = UCB0RXBUF;          // Capture actual data
+    data[1] = UCB0RXBUF;          // Capture actual data
 
     while (UCB0STAT & UCBUSY);
     dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
-    byte3 = UCB0RXBUF;          // Capture actual data
+    data[2] = UCB0RXBUF;          // Capture actual data
 
-    P1OUT |= BIT3;              // CS High
+    P1OUT |= CS;              // CS High
 
-    result = (byte1 << 16) + (byte2 << 8) + byte3;
-
+    result |= ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | ((uint32_t)data[2]);
+    
+    return result;
 
 }
 
