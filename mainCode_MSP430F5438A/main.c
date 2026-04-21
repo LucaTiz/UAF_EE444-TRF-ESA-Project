@@ -5,6 +5,7 @@ void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
 //UART output
+void spiConfig(void);  // TDC Configuration Function
 void uartSendChar(char c);
 void uartSendString(const char *str);
 
@@ -33,7 +34,8 @@ int main(void)
     P3DIR &= ~BIT2;			//SOMI as input
     P1DIR |= BIT3; // CSB1 control 
     P1DIR |= BIT5; // CSB2 control 
-    P1OUT |= BIT3; // set CSB high - not currently in a transaction 
+    P1OUT |= BIT3; // set CSB1 high - not currently in a transaction 
+    P1out |= BIT5; // set CSB2 high - not currently in a transaction
     P1DIR |= BIT6; // enable pin
     P1OUT |= BIT6; // set ENABLE high 
        
@@ -83,6 +85,16 @@ void initSPI(void)
     UCB0IE |= UCRXIE;                   //enable interrupt
 }
 
+
+// Setup external reference clock for TDC
+
+
+
+
+
+
+
+
 //write data to a 6-bit address, and recieve the data back as confirmation
 void spiWrite(unsigned char data, unsigned char address, unsigned int CS)
 {
@@ -98,8 +110,6 @@ void spiWrite(unsigned char data, unsigned char address, unsigned int CS)
   //  while (!(UCB0IFG & UCTXIFG));
   //  P1OUT = 1;
 }
-
-
 
 
 //read data from a 8-bit address (contrl registers)
@@ -159,6 +169,37 @@ uint32_t spiRead3(unsigned char address, unsigned int CS)
     return result;
 
 }
+
+
+// TDC Configuration. Write 8 bit values to configuration registers
+spiWrite(unsigned char data, unsigned char address, unsigned int CS);
+
+void spiConfig(void){
+
+spiWrite(0b10000001,0x00,TDC1)
+spiWrite(0b10000001,0x00,TDC2)
+spiWrite(0b11000000,0x01,TDC1)
+spiWrite(0b11000000,0x01,TDC2)
+spiWrite(0b11111111,0x04,TDC1)
+spiWrite(0b11111111,0x04,TDC2)
+spiWrite(0b11111111,0x05,TDC1)
+spiWrite(0b11111111,0x05,TDC2)
+spiWrite(0b00000111,0x03,TDC1)
+spiWrite(0b00000111,0x03,TDC2)
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
 
 /*
 // UCA ISR
