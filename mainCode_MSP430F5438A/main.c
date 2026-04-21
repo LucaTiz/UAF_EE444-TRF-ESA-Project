@@ -5,7 +5,6 @@ void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
 //UART output
-void spiConfig(void);  // TDC Configuration Function
 void uartSendChar(char c);
 void uartSendString(const char *str);
 
@@ -14,13 +13,13 @@ uint8_t spiRead(unsigned char address, unsigned int CS);
 
 uint32_t spiRead3(unsigned char address, unsigned int CS);
 
-int calculateTime (void);
+float calculateTime (void);
 
 //note: SPI sends and receives simultaneously
 
 volatile int tmp = 0;
-volatile int TDC1 = BIT3;
-volatile int TDC2 = BIT5;
+volatile int TDC1 = BIT5;
+volatile int TDC2 = BIT6;
 volatile uint8_t  read;
 volatile uint32_t read3;
 
@@ -32,14 +31,31 @@ int main(void)
     P3SEL |= BIT1 | BIT2 | BIT3;	// P3.1 - UCB0SIMO, P3.2 - UCB0SOMI, P3.3 - UCB0CLK, UCB0STE
     P3DIR |= BIT1 | BIT3;	//STE, MOSI, and CLK pins as output
     P3DIR &= ~BIT2;			//SOMI as input
-    P1DIR |= BIT3; // CSB1 control 
-    P1DIR |= BIT5; // CSB2 control 
-    P1OUT |= BIT3; // set CSB1 high - not currently in a transaction 
-    P1out |= BIT5; // set CSB2 high - not currently in a transaction
-    P1DIR |= BIT6; // enable pin
-    P1OUT |= BIT6; // set ENABLE high 
-       
 
+    P1DIR |= BIT5; // CSB1 control 
+    P1OUT |= BIT5; // set CSB1 (TDC1) high - not currently in a transaction 
+  
+    P1DIR |= BIT6; // CSB2 control 
+    P1OUT |= BIT6; // set CSB2 (TDC2) high - not currently in a transaction 
+    
+    
+    P1DIR |= BIT3; // ENABLE1 pin
+    P1OUT |= BIT3; // set ENABLE1 high 
+
+    P1DIR |= BIT7; // OSC_ENABLE pin (TDC8MHz)
+    P1OUT |= BIT7; // set OSC_ENABLE high 
+
+    P1DIR &= ~BIT2; // interrupt pin for measurement ready  TDC1      
+    P1IE |= BIT2; // on INTB1 to interrupt
+    P1IES |= BIT2; // sets P21.2 interrupt to sensitive on fallng edge (button pressed in)
+    P1REN |= BIT2; // enables internal resistor on P1.2.
+    P1OUT |= BIT2; // configures resistor to pull-up on P1.2.
+
+    P1DIR &= ~BIT4; // interrupt pin for measurement ready  TDC2                                                                   
+    P1IE |= BIT4; // on INTB2 to interrupt
+    P1IES |= BIT4; // sets P21.2 interrupt to sensitive on fallng edge (button pressed in)
+    P1REN |= BIT4; // enables internal resistor on P1.4.
+    P1OUT |= BIT4; // configures resistor to pull-up on P1.4.
    
     initClock();	//Setup system timing; do first
  //   initUART();		//Initialize UART
@@ -86,13 +102,6 @@ void initSPI(void)
 }
 
 
-// Setup external reference clock for TDC
-
-
-
-
-
-
 
 
 //write data to a 6-bit address, and recieve the data back as confirmation
@@ -112,6 +121,8 @@ void spiWrite(unsigned char data, unsigned char address, unsigned int CS)
 }
 
 
+
+
 //read data from a 8-bit address (contrl registers)
 uint8_t spiRead(unsigned char address, unsigned int CS)
 {
@@ -125,7 +136,7 @@ uint8_t spiRead(unsigned char address, unsigned int CS)
     UCB0TXBUF = 0x00;             // Send dummy data to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
-    read = UCB0RXBUF;          // Capture actual data
+    return UCB0RXBUF;          // Capture actual data
     
     P1OUT |= CS;              // CS High
 }
@@ -166,13 +177,11 @@ uint32_t spiRead3(unsigned char address, unsigned int CS)
 
     result |= ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8) | ((uint32_t)data[2]);
     
-    return result;
+    return result; ///supposedly ~~10 us in total.
 
 }
 
-
 // TDC Configuration. Write 8 bit values to configuration registers
-spiWrite(unsigned char data, unsigned char address, unsigned int CS);
 
 void spiConfig(void){
 
@@ -187,15 +196,44 @@ spiWrite(0b11111111,0x05,TDC2)
 spiWrite(0b00000111,0x03,TDC1)
 spiWrite(0b00000111,0x03,TDC2)
 
+}
 
 
 
+float calculateTime (uint32_t raw, unsigned int CS) {
+   uint32_t calCount = (spiRead3(0x1C,CS) - spiRead3(0x1B,CS)) / (40 - 1); // 40 periods (SUBJECT TO CHANGE)
+   uint32_t normLSB = (1/8000000) / (calCount);
+   return (raw * normLSB);
+}
+
+//void calculateAngletoBUF (float time) {
 
 
+//}
 
 
+void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
+while (P1IFG != (BIT2 + BIT4));
+   uint32_t rawTDC1 = spiRead3(0x10, TDC1); // reads time 1 from TDC1 
+   uint32_t rawTDC2 = spiRead3(0x10, TDC2); // reads time 1 from TDC2
+
+   ////calculate ....////
+   float time = calculateTime(rawTDC2, TDC2) - calculateTime(rawTDC1, TDC1);
+   
+   /// binnn based on angle "" ///
+   //calculateAngletoBUF ()
+
+   //////////////////////
+
+   ///start measurement again; 
+
+ 
 
 
+   ///// clears ISR queue while there is some interrupt present.
+   do {
+    P1IFG = 0;
+   }  while (P1IFG != 0); 
 }
 
 
