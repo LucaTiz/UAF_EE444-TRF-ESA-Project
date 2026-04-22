@@ -198,15 +198,19 @@ spiWrite(0b10000001,0x00,TDC1);
 
 spiRead(0x00, TDC1);
 
-spiWrite(0b10000001,0x00,TDC2);
+//spiWrite(0b10000001,0x00,TDC2);
 spiWrite(0b11000000,0x01,TDC1);
-spiWrite(0b11000000,0x01,TDC2);
+spiRead(0x01, TDC1);
+//spiWrite(0b11000000,0x01,TDC2);
 spiWrite(0b11111111,0x04,TDC1);
-spiWrite(0b11111111,0x04,TDC2);
+spiRead(0x04, TDC1);
+//spiWrite(0b11111111,0x04,TDC2);
 spiWrite(0b11111111,0x05,TDC1);
-spiWrite(0b11111111,0x05,TDC2);
+spiRead(0x05, TDC1);
+//spiWrite(0b11111111,0x05,TDC2);
 spiWrite(0b00000111,0x03,TDC1);
-spiWrite(0b00000111,0x03,TDC2);
+spiRead(0x03, TDC1);
+//spiWrite(0b00000111,0x03,TDC2);
 
 ///test ISR 
 
