@@ -4,6 +4,7 @@
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
+void initTimer(void);   //timer setup for UART transmission
 //UART output
 void uartSendChar(char c);
 void uartSendString(const char *str);
@@ -22,6 +23,16 @@ volatile int TDC1 = BIT5;
 volatile int TDC2 = BIT6;
 volatile uint8_t  read;
 volatile uint32_t read3;
+const int numBins = 5; //number of bins must match number of labels
+volatile int bins[numBins];
+volatile const char *labels[] =
+{
+  "label1",
+  "label2",
+  "label3",
+  "label4",
+  "label5"
+}
 
 int main(void)
 {
@@ -86,6 +97,13 @@ void initClock(void)
     __bic_SR_register(SCG0);		//Re-enable FLL
     __delay_cycles(25000);		//Time to allow clock stabilization
     UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK = XT1 SMCLK = 
+}
+
+void initTimer(void)
+{
+  TA0CTL = TACLR | TASSEL__ACLK | MC__UP | ID_3; //clear previous settings, clock source ACLK, clock divider /8, UP mode, Enable mode control
+  TA0CCTL0 = CCIE; //enable timer interrupt
+  TA0CCR0 = 5 * 32767 / 8; //5 seconds of ACLK
 }
 
 // SPI Setup //
@@ -236,56 +254,9 @@ while (P1IFG != (BIT2 + BIT4));
    }  while (P1IFG != 0); 
 }
 
-
-
-
-/*
-// UCA ISR
-void RX(void) __interrupt [USCI_B0_VECTOR]
+//timer interrupt - time to transmit and reset the bins
+void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 {
-  if(UCB0IFG & UCRXIFG) //Check RX bit of interrupt flag register
-  {
-    tmp = UCB0RXBUF; //record recieved character
-  }
+    UartSendString("{\""); //message start
+    UartSendString(labels[0]);
 }
-*/
-
-/*
-//UART Setup//
-void initUART(void)
-{
-    //Select UART pins (double check)
-    P3SEL |= BIT4 | BIT5;		// P3.4 = TX and P3.5 = RX
-
-    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
-    UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
-
-    //Divider for Clock:
-    //Divider = Clk / baud rate = 8e6 / 9600 = 833.333
-    //BR0/BR1 = 833 
-    //note: MSP430 can not store 833 in single register, max value per register is 255
-    //Values are stored in two registers instead
-
-    UCA0BR0 = 833 & 0xFF;		//lower 8 bits (65)
-    UCA0BR1 = (833 >> 8);		//upper 8 bits (3 * 2^8)
-    UCA0MCTL = UCBRS_6;			//Approx modulation
-
-    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
-}
-*/
-
-/*
-//UART transmit functions
-void uartSendChar(char c)
-{
-    while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = c;
-}
-void uartSendString(const char *str)
-{
-    while(*str)
-    {
-         uartSendChar(*str++);
-    }
-}    
-*/
