@@ -1,12 +1,14 @@
+
 #include <msp430.h>
 #include <stdint.h>
+extern void uartSendChar(char c);
+extern void uartSendString(const char *str);
+#include "uart.h"
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
-//UART output
-void uartSendChar(char c);
-void uartSendString(const char *str);
+void initTimer(void);   //timer setup for UART transmission
 
 void spiWrite(unsigned char data, unsigned char address, uint8_t CS); 
 void spiRead(unsigned char address, uint8_t CS);
@@ -18,7 +20,11 @@ float calculateTime (uint32_t raw, unsigned int CS);
 
 //note: SPI sends and receives simultaneously
 
-volatile int tmp = 0;
+volatile int tmp = 0; //temporary variable
+volatile int tmp2 = 0; //temporary variable
+volatile int i = 0; //temporary iteration variable
+volatile int j = 0; //temporary iteration variable
+volatile int k = 0; //temporary iteration variable
 volatile int TDC1 = BIT5;
 volatile int TDC2 = BIT6;
 //volatile uint8_t  read;
@@ -26,9 +32,17 @@ volatile int TDC2 = BIT6;
 volatile uint32_t rawTDC1;
 volatile uint32_t rawTDC2;
 volatile unsigned char dummy;
-
-unsigned char read;
-
+volatile unsigned char read;
+const int numBins = 5; //number of bins must match number of labels
+volatile int bins[5] = {0, 0, 0, 0, 0};
+const char *labels[] =
+{
+  "label1",
+  "label2",
+  "label3",
+  "label4",
+  "label5"
+};
 
 volatile float time;
 
@@ -69,7 +83,8 @@ int main(void)
    
     initClock();	//Setup system timing; do first
     initSPI();		//Initialize SPI after clocks
-    
+    initUART();
+    initTimer();
     
     __delay_cycles(8000);
     TDCConfig(); //configure and start measuring.
@@ -90,12 +105,18 @@ void initClock(void)
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
     UCSCTL1 = DCORSEL_5; 		//Set frequency range to support ~8Mhz
     UCSCTL2 = FLLD_0 | 243;		//FLLD_0 = divider 1
+    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK <= XT1; MCLK, SMCLK <= DCO
 					//f_DCO = (N+1) * f_ref
 					//8MHz / 32768Hz = 244, so N = 243
-
     __bic_SR_register(SCG0);		//Re-enable FLL
-    __delay_cycles(25000);		//Time to allow clock stabilization
-    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK = XT1 SMCLK = 
+    __delay_cycles(2500);		//Time to allow clock stabilization
+}
+
+void initTimer(void)
+{
+  TA0CTL = TACLR | TASSEL__ACLK | MC__UP | ID_3; //clear previous settings, clock source ACLK, clock divider /8, UP mode, Enable mode control
+  TA0CCTL0 = CCIE; //enable timer interrupt
+  TA0CCR0 = 20479 / 8; //5 seconds of ACLK - 5 * 32767 / 8
 }
 
 // SPI Setup //
@@ -104,11 +125,11 @@ void initSPI(void)
 
     UCB0CTL1 |= UCSWRST; 		//Hold in reset
     UCB0CTL0 = UCCKPH | UCMSB | UCMST | UCSYNC | UCMODE_0; //SPI master, MSB first, 3 wire config 
-    UCB0CTL1 |= UCSSEL_2;      //SMCLK
+    UCB0CTL1 = UCSSEL_2;      //SMCLK
     UCB0BR0 = 80;			//SPI clock divider
     UCB0BR1 = 0;			//Upper divider byte
     UCB0CTL1 &= ~UCSWRST;		//Release reset and enable SPI
-    UCB0IE |= UCRXIE;                   //enable interrupt
+    //UCB0IE |= UCRXIE;                   //enable interrupt - ISR not implemented!
 }
 
 
@@ -281,56 +302,41 @@ void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
    }  while (P1IFG != 0); 
 }
 
-
-
-
-/*
-// UCA ISR
-void RX(void) __interrupt [USCI_B0_VECTOR]
+//timer interrupt - time to transmit and reset the bins
+void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 {
-  if(UCB0IFG & UCRXIFG) //Check RX bit of interrupt flag register
-  {
-    tmp = UCB0RXBUF; //record recieved character
-  }
-}
-*/
-
-/*
-//UART Setup//
-void initUART(void)
-{
-    //Select UART pins (double check)
-    P3SEL |= BIT4 | BIT5;		// P3.4 = TX and P3.5 = RX
-
-    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
-    UCA0CTL1 |= UCSSEL_2;		//SMCLK as source
-
-    //Divider for Clock:
-    //Divider = Clk / baud rate = 8e6 / 9600 = 833.333
-    //BR0/BR1 = 833 
-    //note: MSP430 can not store 833 in single register, max value per register is 255
-    //Values are stored in two registers instead
-
-    UCA0BR0 = 833 & 0xFF;		//lower 8 bits (65)
-    UCA0BR1 = (833 >> 8);		//upper 8 bits (3 * 2^8)
-    UCA0MCTL = UCBRS_6;			//Approx modulation
-
-    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
-}
-*/
-
-/*
-//UART transmit functions
-void uartSendChar(char c)
-{
-    while (!(UCA0IFG & UCTXIFG));
-    UCA0TXBUF = c;
-}
-void uartSendString(const char *str)
-{
-    while(*str)
+    uartSendChar('{'); //start json string
+	//send the key-value pair for all bins
+    for(i = 0; i < numBins; i++)
     {
-         uartSendChar(*str++);
+		uartSendChar('\"');
+		uartSendString((const char *)labels[i]);
+		uartSendString("\": ");
+		j = bins[i];
+		tmp = 0;
+		//tmp = the number of decimal digits of the bins[i]
+		while(j > 0)
+			{
+				j /= 10;
+				tmp++;
+			}
+		//output each digit of bins[i]
+		for(j = 1; j <= tmp; j++)
+			{
+				tmp2 = 1;
+				//tmp2 = 10^j
+				for(k = 1; k < j; k++)
+					{
+					tmp2 *= 10;
+					}
+				uartSendChar('0' + ((bins[i] / tmp2) % 10)); //send digit j
+			}
+		bins[i] = 0; //bin transmitted, clear it.
+		//separate with comma unless it's the last bin
+		if(i != numBins - 1)
+		{
+			uartSendString(", ");
+		}
     }
-}    
-*/
+	uartSendString("}\n\r"); //end json string
+}
