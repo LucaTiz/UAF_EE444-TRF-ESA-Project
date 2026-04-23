@@ -20,7 +20,10 @@ float calculateTime (uint32_t raw, unsigned int CS);
 //note: SPI sends and receives simultaneously
 
 volatile int tmp = 0; //temporary variable
+volatile int tmp2 = 0; //temporary variable
 volatile int i = 0; //temporary iteration variable
+volatile int j = 0; //temporary iteration variable
+volatile int k = 0; //temporary iteration variable
 volatile int TDC1 = BIT5;
 volatile int TDC2 = BIT6;
 //volatile uint8_t  read;
@@ -273,10 +276,38 @@ while (P1IFG != (BIT2 + BIT4));
 //timer interrupt - time to transmit and reset the bins
 void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 {
-    uartSendString("{\""); //message start
-    uartSendString(labels[0]); //first label
-    for(i = 1; i <= numBins; i++)
+    uartSendChar('{'); //start json string
+	//send the key-value pair for all bins
+    for(i = 0; i < numBins; i++)
     {
-      
+		uartSendChar('\"');
+		uartSendString(label[i]);
+		uartSendString("\": ");
+		j = bins[i];
+		tmp = 0;
+		//tmp = the number of decimal digits of the bins[i]
+		while(j > 0)
+			{
+				j /= 10;
+				tmp++;
+			}
+		//output each digit of bins[i]
+		for(j = 1; j <= tmp; j++)
+			{
+				tmp2 = 1;
+				//tmp2 = 10^j
+				for(k = 1; k < j; k++)
+					{
+					tmp2 *= 10;
+					}
+				uartSendChar('0' + ((bins[i] / tmp2) % 10)); //send digit j
+			}
+		bins[i] = 0; //bin transmitted, clear it.
+		//separate with comma unless it's the last bin
+		if(i != numBins - 1)
+		{
+			uartSendString(", ");
+		}
     }
+	uartSendChar('}'); //end json string
 }
