@@ -35,7 +35,7 @@ volatile unsigned char read;
 float time;
 const int numBins = 5; //number of bins must match number of labels
 volatile int bins[5];
-volatile const char *labels[] =
+const char *labels[] =
 {
   "label1",
   "label2",
@@ -281,7 +281,7 @@ void Timer(void) __interrupt [TIMER0_A0_VECTOR]
     for(i = 0; i < numBins; i++)
     {
 		uartSendChar('\"');
-		uartSendString(label[i]);
+		uartSendString((const char *)labels[i]);
 		uartSendString("\": ");
 		j = bins[i];
 		tmp = 0;
