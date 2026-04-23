@@ -78,7 +78,7 @@ int main(void)
    
     initClock();	//Setup system timing; do first
     initSPI();		//Initialize SPI after clocks
-    
+    initTimer();
     
     __delay_cycles(8000);
     TDCConfig(); //configure and start measuring.
@@ -101,10 +101,9 @@ void initClock(void)
     UCSCTL2 = FLLD_0 | 243;		//FLLD_0 = divider 1
 					//f_DCO = (N+1) * f_ref
 					//8MHz / 32768Hz = 244, so N = 243
-
     __bic_SR_register(SCG0);		//Re-enable FLL
     __delay_cycles(2500);		//Time to allow clock stabilization
-    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK = XT1 SMCLK = 
+    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK <= XT1; MCLK, SMCLK <= DCO
 }
 
 void initTimer(void)
@@ -124,7 +123,7 @@ void initSPI(void)
     UCB0BR0 = 80;			//SPI clock divider
     UCB0BR1 = 0;			//Upper divider byte
     UCB0CTL1 &= ~UCSWRST;		//Release reset and enable SPI
-    UCB0IE |= UCRXIE;                   //enable interrupt
+    //UCB0IE |= UCRXIE;                   //enable interrupt - ISR not implemented!
 }
 
 
