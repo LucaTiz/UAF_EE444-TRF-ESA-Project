@@ -1,13 +1,13 @@
 #include <msp430.h>
 #include <stdint.h>
+extern void uartSendChar(char c);
+extern void uartSendString(const char *str);
+#include "uart.h"
 
 void initClock(void); 	//System clock setup
 void initUART(void); 	//UART for PC comms setup
 void initSPI(void); 	//SPI setup for TDC7201 comms
 void initTimer(void);   //timer setup for UART transmission
-//UART output
-void uartSendChar(char c);
-void uartSendString(const char *str);
 
 void spiWrite(unsigned char data, unsigned char address, uint8_t CS); 
 void spiRead(unsigned char address, uint8_t CS);
