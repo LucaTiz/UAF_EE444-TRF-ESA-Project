@@ -4,17 +4,17 @@
 void initUART(void)
 {
     //Select UART pins (double check)
-    P3SEL |= BIT4;		//P3.4 = UCA0TXD
-    P3DIR |= BIT4;                      //UCA0TXD output pin direction
-    UCA0CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
-    UCA0CTL1 |= UCSSEL_3;		//SMCLK as source
-    UCA0CTL0 = UCPEN + UCPAR;	//even parity, 8 data bits, 1 stop bit
+    P5SEL |= BIT6;		//P5.6 = UCA1TXD
+    P5DIR |= BIT6;                      //UCA1TXD output pin direction
+    UCA1CTL1 |= UCSWRST;		//Hold USCI in reset while configuring
+    UCA1CTL1 |= UCSSEL_3;		//SMCLK as source
+    UCA1CTL0 = UCPEN + UCPAR;	//even parity, 8 data bits, 1 stop bit
     //Divider for Clock:
     //oversampling on, reccommended values from table 36-5
-    UCA0BR0 = 8;		//lower 8 bits
-    UCA0BR1 = 0;			//upper 8 bits
-    UCA0MCTL = UCBRS_0 | UCBRF_11 | UCOS16;
-    UCA0CTL1 &= ~UCSWRST; 		//Enable UART
+    UCA1BR0 = 8;		//lower 8 bits
+    UCA1BR1 = 0;			//upper 8 bits
+    UCA1MCTL = UCBRS_0 | UCBRF_11 | UCOS16;
+    UCA1CTL1 &= ~UCSWRST; 		//Enable UART
 }
 
 
@@ -32,4 +32,3 @@ void uartSendString(const char *str)
          uartSendChar(*str++);
     }
 }    
-
