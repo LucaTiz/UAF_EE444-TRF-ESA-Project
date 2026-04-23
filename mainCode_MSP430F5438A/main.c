@@ -35,7 +35,7 @@ volatile unsigned char dummy;
 volatile unsigned char read;
 float time;
 const int numBins = 5; //number of bins must match number of labels
-volatile int bins[5];
+volatile int bins[5] = {0, 0, 0, 0, 0};
 const char *labels[] =
 {
   "label1",
@@ -115,7 +115,7 @@ void initTimer(void)
 {
   TA0CTL = TACLR | TASSEL__ACLK | MC__UP | ID_3; //clear previous settings, clock source ACLK, clock divider /8, UP mode, Enable mode control
   TA0CCTL0 = CCIE; //enable timer interrupt
-  TA0CCR0 = 5 * 32767 / 8; //5 seconds of ACLK
+  TA0CCR0 = 20479 / 8; //5 seconds of ACLK - 5 * 32767 / 8
 }
 
 // SPI Setup //
@@ -311,6 +311,5 @@ void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 			uartSendString(", ");
 		}
     }
-	uartSendChar('}'); //end json string
+	uartSendString("}\n\r"); //end json string
 }
-
