@@ -24,7 +24,7 @@ volatile int TDC2 = BIT6;
 volatile uint8_t  read;
 volatile uint32_t read3;
 const int numBins = 5; //number of bins must match number of labels
-volatile int bins[numBins];
+volatile int bins[5];
 volatile const char *labels[] =
 {
   "label1",
@@ -32,7 +32,7 @@ volatile const char *labels[] =
   "label3",
   "label4",
   "label5"
-}
+};
 
 int main(void)
 {
@@ -203,16 +203,16 @@ uint32_t spiRead3(unsigned char address, unsigned int CS)
 
 void spiConfig(void){
 
-spiWrite(0b10000001,0x00,TDC1)
-spiWrite(0b10000001,0x00,TDC2)
-spiWrite(0b11000000,0x01,TDC1)
-spiWrite(0b11000000,0x01,TDC2)
-spiWrite(0b11111111,0x04,TDC1)
-spiWrite(0b11111111,0x04,TDC2)
-spiWrite(0b11111111,0x05,TDC1)
-spiWrite(0b11111111,0x05,TDC2)
-spiWrite(0b00000111,0x03,TDC1)
-spiWrite(0b00000111,0x03,TDC2)
+spiWrite(0b10000001,0x00,TDC1);
+spiWrite(0b10000001,0x00,TDC2);
+spiWrite(0b11000000,0x01,TDC1);
+spiWrite(0b11000000,0x01,TDC2);
+spiWrite(0b11111111,0x04,TDC1);
+spiWrite(0b11111111,0x04,TDC2);
+spiWrite(0b11111111,0x05,TDC1);
+spiWrite(0b11111111,0x05,TDC2);
+spiWrite(0b00000111,0x03,TDC1);
+spiWrite(0b00000111,0x03,TDC2);
 
 }
 
