@@ -1,3 +1,4 @@
+
 #include <msp430.h>
 #include <stdint.h>
 extern void uartSendChar(char c);
@@ -81,6 +82,7 @@ int main(void)
    
     initClock();	//Setup system timing; do first
     initSPI();		//Initialize SPI after clocks
+    initUART();
     initTimer();
     
     __delay_cycles(8000);
@@ -102,11 +104,11 @@ void initClock(void)
     UCSCTL0 = 0x0000;			//Sets DCO register to lowest default values
     UCSCTL1 = DCORSEL_5; 		//Set frequency range to support ~8Mhz
     UCSCTL2 = FLLD_0 | 243;		//FLLD_0 = divider 1
+    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK <= XT1; MCLK, SMCLK <= DCO
 					//f_DCO = (N+1) * f_ref
 					//8MHz / 32768Hz = 244, so N = 243
     __bic_SR_register(SCG0);		//Re-enable FLL
     __delay_cycles(2500);		//Time to allow clock stabilization
-    UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK <= XT1; MCLK, SMCLK <= DCO
 }
 
 void initTimer(void)
@@ -311,3 +313,4 @@ void Timer(void) __interrupt [TIMER0_A0_VECTOR]
     }
 	uartSendChar('}'); //end json string
 }
+
