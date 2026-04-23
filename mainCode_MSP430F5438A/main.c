@@ -19,7 +19,8 @@ float calculateTime (uint32_t raw, unsigned int CS);
 
 //note: SPI sends and receives simultaneously
 
-volatile int tmp = 0;
+volatile int tmp = 0; //temporary variable
+volatile int i = 0; //temporary iteration variable
 volatile int TDC1 = BIT5;
 volatile int TDC2 = BIT6;
 //volatile uint8_t  read;
@@ -102,7 +103,7 @@ void initClock(void)
 					//8MHz / 32768Hz = 244, so N = 243
 
     __bic_SR_register(SCG0);		//Re-enable FLL
-    __delay_cycles(25000);		//Time to allow clock stabilization
+    __delay_cycles(2500);		//Time to allow clock stabilization
     UCSCTL4 = SELA__XT1CLK + SELS__DCOCLK + SELM__DCOCLK;		//ACLK = XT1 SMCLK = 
 }
 
@@ -274,5 +275,9 @@ while (P1IFG != (BIT2 + BIT4));
 void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 {
     uartSendString("{\""); //message start
-    uartSendString(labels[0]);
+    uartSendString(labels[0]); //first label
+    for(i = 1; i <= numBins; i++)
+    {
+      
+    }
 }
