@@ -33,7 +33,6 @@ volatile uint32_t rawTDC1;
 volatile uint32_t rawTDC2;
 volatile unsigned char dummy;
 volatile unsigned char read;
-float time;
 const int numBins = 5; //number of bins must match number of labels
 volatile int bins[5] = {0, 0, 0, 0, 0};
 const char *labels[] =
@@ -44,6 +43,8 @@ const char *labels[] =
   "label4",
   "label5"
 };
+
+volatile float time;
 
 int main(void)
 {
@@ -137,15 +138,16 @@ void initSPI(void)
 //write data to a 6-bit address, and recieve the data back as confirmation
 void spiWrite(unsigned char data, unsigned char address, uint8_t CS)
 {
+    P1OUT &= ~(CS);
+    __delay_cycles(2000);
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
-    P1OUT &= ~(CS); //
     UCB0TXBUF =  (0b01000000 | address);//write command from TDC datasheet - initiates write to address (TDCCONFIG1 at 0x00)
     while (!(UCB0IFG & UCTXIFG));
     UCB0TXBUF = data; // writes data (5 to TDCCONFIG1)
     while (!(UCB0IFG & UCTXIFG));
     while (UCB0STAT & UCBUSY);
     P1OUT |= CS;
-
+    __delay_cycles(2000);
 }
 
 
@@ -155,7 +157,7 @@ void spiWrite(unsigned char data, unsigned char address, uint8_t CS)
 void spiRead(unsigned char address, uint8_t CS)
 {
     P1OUT &= ~(CS);
-
+    __delay_cycles(2000);
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
     UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
     while (UCB0STAT & UCBUSY);
@@ -167,7 +169,7 @@ void spiRead(unsigned char address, uint8_t CS)
     read = UCB0RXBUF;          // Capture actual data
     
     P1OUT |= CS;              // CS High
-
+    __delay_cycles(2000);
 }
 
 
@@ -177,12 +179,13 @@ uint32_t spiRead3(unsigned char address, unsigned int CS)
     uint32_t result = 0;
 
     char dummy1;
+    P1OUT &= ~(CS);
+    __delay_cycles(2000);
     while (!(UCB0IFG & UCTXIFG));	//Wait until TX buffer is empty
-    P1OUT &= ~CS;
     UCB0TXBUF =  (0b00000000 | address); // Read command (Bit 6 clear)
-   
     while (UCB0STAT & UCBUSY);
     dummy1 = UCB0RXBUF;            // Clear the RX buffer from the first shift
+
     UCB0TXBUF = 0x00;             // Send dummy to clock in data
     while (!(UCB0IFG & UCRXIFG));
     while (UCB0STAT & UCBUSY);
@@ -214,36 +217,56 @@ uint32_t spiRead3(unsigned char address, unsigned int CS)
 
 void TDCConfig(void){
 
-spiWrite(0b10000001,0x00,TDC1);
 
-spiRead(0x00, TDC1);
-
-//spiWrite(0b10000001,0x00,TDC2);
-spiWrite(0b11000000,0x01,TDC1);
+spiWrite(0b01000000,0x01,TDC1);
 spiRead(0x01, TDC1);
-//spiWrite(0b11000000,0x01,TDC2);
-spiWrite(0b11111111,0x04,TDC1);
-spiRead(0x04, TDC1);
-//spiWrite(0b11111111,0x04,TDC2);
-spiWrite(0b11111111,0x05,TDC1);
-spiRead(0x05, TDC1);
-//spiWrite(0b11111111,0x05,TDC2);
+
 spiWrite(0b00000111,0x03,TDC1);
 spiRead(0x03, TDC1);
-//spiWrite(0b00000111,0x03,TDC2);
+
+spiWrite(0b11111111,0x04,TDC1);
+spiRead(0x04, TDC1);
+
+spiWrite(0b11111111,0x05,TDC1);
+spiRead(0x05, TDC1);
+
+
+
+spiWrite(0b01000000,0x01,TDC2);
+spiRead(0x01, TDC2);
+
+spiWrite(0b00000111,0x03,TDC2);
+spiRead(0x03, TDC2);
+
+spiWrite(0b11111111,0x04,TDC2);
+spiRead(0x04, TDC2);
+
+spiWrite(0b11111111,0x05,TDC2);
+spiRead(0x05, TDC2);
+
+
+//strart meas
+spiWrite(0b10000001,0x00,TDC2);
+spiRead(0x00, TDC2);
+spiWrite(0b10000001,0x00,TDC1);
+spiRead(0x00, TDC1);
+
 
 ///test ISR 
 
-P1IFG = (BIT2 + BIT4);
+//P1IFG = (BIT2 + BIT4);
 
 }
 
 
 
 float calculateTime (uint32_t raw, unsigned int CS) {
-   uint32_t calCount = (spiRead3(0x1C,CS) - spiRead3(0x1B,CS)) / (40 - 1); // 40 periods (SUBJECT TO CHANGE)
-   uint32_t normLSB = (1/8000000) / (calCount);
-   return (raw * normLSB);
+   uint32_t TDCCAL1 = spiRead3(0x1B,CS); 
+   uint32_t TDCCAL2 = spiRead3(0x1C,CS);
+   float calCount = (TDCCAL2 - TDCCAL1) / (10.0 - 1.0); // 40 periods (SUBJECT TO CHANGE)
+   float period = (1.0/8000000.0);
+   float normLSB = (period) / (float)(calCount);
+   return (float)(raw * normLSB);
 }
 
 //void calculateAngletoBUF (float time) {
@@ -253,9 +276,12 @@ float calculateTime (uint32_t raw, unsigned int CS) {
 
 
 void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
-while (P1IFG != (BIT2 + BIT4));
-   rawTDC1 = spiRead3(0x10, TDC1); // reads time 1 from TDC1 
+
+//while (P1IFG != (BIT2 + BIT4));
+  __delay_cycles(8000);
+ 
    rawTDC2 = spiRead3(0x10, TDC2); // reads time 1 from TDC2
+   rawTDC1 = spiRead3(0x10, TDC1); // reads time 1 from TDC1
 
    ////calculate ....////
    time = calculateTime(rawTDC2, TDC2) - calculateTime(rawTDC1, TDC1);
@@ -268,6 +294,7 @@ while (P1IFG != (BIT2 + BIT4));
    ///start measurement again; 
  
   spiWrite(0b10000001,0x00,TDC1);
+
   spiWrite(0b10000001,0x00,TDC2);
    ///// clears ISR queue while there is some interrupt present.
    do {
