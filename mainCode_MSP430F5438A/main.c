@@ -34,8 +34,8 @@ volatile uint32_t rawTDC2;
 volatile unsigned char dummy;
 volatile unsigned char read;
 const int numBins = 5; //number of bins must match number of labels
-volatile int bins[6] = {0, 0, 0, 0, 0};
-volatile float binsBounds = {0.00000005f, 0.0000001f, 0.0000005f, 0.000001f, 0.000005f, 0.000001f};
+volatile int bins[6] = {0, 1, 2, 3, 4};
+const float binsBounds[6] = {0.00000005f, 0.0000001f, 0.0000005f, 0.000001f, 0.000005f, 0.000001f};
 const char *labels[] =
 {
   "label1",
@@ -273,9 +273,9 @@ float calculateTime (uint32_t raw, unsigned int CS) {
 void calculateAngletoBins (float time) {
 	//////// calculate angle from time
 	tmp = time; //placeholder, tmp = angle
-	if(!(tmp < binsBounds[0] || tmp > binsbounds[numBins - 1])) //if the value is in the bounds
+	if(!(tmp < binsBounds[0] || tmp > binsBounds[numBins - 1])) //if the value is in the bounds
 	{
-		for(int i = 1; i < numBins; i++)
+		for(i = 1; i < numBins; i++)
 			{
 				if(tmp < binsBounds[i]) bins[i-1]++; //add to bin
 			}
@@ -299,7 +299,7 @@ void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
    time = calculateTime(rawTDC2, TDC2) - calculateTime(rawTDC1, TDC1);
    
    /// binnn based on angle "" ///
-   calculateAngletoBins(time)
+   calculateAngletoBins(time);
 
    //////////////////////
 
@@ -324,26 +324,30 @@ void Timer(void) __interrupt [TIMER0_A0_VECTOR]
 		uartSendChar('\"');
 		uartSendString((const char *)labels[i]);
 		uartSendString("\": ");
-		j = bins[i];
-		tmp = 0;
-		//tmp = the number of decimal digits of the bins[i]
-		while(j > 0)
-			{
-				j /= 10;
-				tmp++;
-			}
-		//output each digit of bins[i]
-		for(j = 1; j <= tmp; j++)
-			{
-				tmp2 = 1;
-				//tmp2 = 10^j
-				for(k = 1; k < j; k++)
-					{
-					tmp2 *= 10;
-					}
-				uartSendChar('0' + ((bins[i] / tmp2) % 10)); //send digit j
-			}
-		bins[i] = 0; //bin transmitted, clear it.
+                if(bins[i] == 0) uartSendChar('0');
+                else
+                {
+                  j = bins[i];
+                  tmp = 0;
+      		  //tmp = the number of decimal digits of the bins[i]
+      		  while(j > 0)
+      		  	{
+      		  		j /= 10;
+      		  		tmp++;
+      		  	}
+      		  //output each digit of bins[i]
+      		  for(j = 1; j <= tmp; j++)
+      		  	{
+      		  		tmp2 = 1;
+      		  		//tmp2 = 10^j
+      		  		for(k = 1; k < j; k++)
+      		  			{
+      		  			tmp2 *= 10;
+      		  			}
+      		  		uartSendChar('0' + ((bins[i] / tmp2) % 10)); //send digit j
+      		  	}
+      		  bins[i] = 0; //bin transmitted, clear it.
+                  }
 		//separate with comma unless it's the last bin
 		if(i != numBins - 1)
 		{
