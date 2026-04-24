@@ -34,7 +34,8 @@ volatile uint32_t rawTDC2;
 volatile unsigned char dummy;
 volatile unsigned char read;
 const int numBins = 5; //number of bins must match number of labels
-volatile int bins[5] = {0, 0, 0, 0, 0};
+volatile int bins[6] = {0, 0, 0, 0, 0};
+volatile float binsBounds = {0.00000005f, 0.0000001f, 0.0000005f, 0.000001f, 0.000005f, 0.000001f};
 const char *labels[] =
 {
   "label1",
@@ -269,10 +270,21 @@ float calculateTime (uint32_t raw, unsigned int CS) {
    return (float)(raw * normLSB);
 }
 
-//void calculateAngletoBUF (float time) {
-
-
-//}
+void calculateAngletoBins (float time) {
+	//////// calculate angle from time
+	tmp = time; //placeholder, tmp = angle
+	if(!(tmp < binsBounds[0] || tmp > binsbounds[numBins - 1])) //if the value is in the bounds
+	{
+		for(int i = 1; i < numBins; i++)
+			{
+				if(tmp < binsBounds[i]) bins[i-1]++; //add to bin
+			}
+	}
+	else
+	{
+		//handle out of bin range?
+	}
+}
 
 
 void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
@@ -287,7 +299,7 @@ void TDCreadreadyISR(void) __interrupt [PORT1_VECTOR] {
    time = calculateTime(rawTDC2, TDC2) - calculateTime(rawTDC1, TDC1);
    
    /// binnn based on angle "" ///
-   //calculateAngletoBUF ()
+   calculateAngletoBins(time)
 
    //////////////////////
 
